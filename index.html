@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI客服 · 行业智能问答</title>
+<style>
+:root {
+  --primary: #20B2AA;
+  --primary-light: #48D1CC;
+  --primary-bg: #F0FBFA;
+  --primary-soft: #E0F5F3;
+  --text: #2D3436;
+  --text-2: #636E72;
+  --text-3: #B2BEC3;
+  --border: #ECF0F1;
+  --surface: #FFFFFF;
+  --surface-2: #F8F9FA;
+  --bubble-user: #20B2AA;
+  --bubble-ai: #FFFFFF;
+  --bubble-ai-border: #E8ECEF;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+  --max-width: 460px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body[data-industry="edu"] {
+  --primary: #F58634;
+  --primary-light: #F9A55A;
+  --primary-bg: #FFF8F0;
+  --primary-soft: #FFE8D1;
+  --bubble-user: #F58634;
+}
+
+body[data-industry="gym"] {
+  --primary: #3B82F6;
+  --primary-light: #60A5FA;
+  --primary-bg: #EFF6FF;
+  --primary-soft: #DBEAFE;
+  --bubble-user: #3B82F6;
+}
+
+body[data-industry="hair"] {
+  --primary: #D6367F;
+  --primary-light: #E85A9C;
+  --primary-bg: #FDF2F8;
+  --primary-soft: #FCE4EC;
+  --bubble-user: #D6367F;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: var(--surface-2);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: 100%;
+  max-width: var(--max-width);
+  background: var(--surface);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0,0,0,0.04);
+}
+
+/* === 顶部栏 === */
+.header {
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-top: max(14px, env(safe-area-inset-top));
+}
+
+.header-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.header-info { flex: 1; min-width: 0; }
+
+.header-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.verified-badge svg { width: 10px; height: 10px; }
+
+.header-status {
+  font-size: 11px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.header-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4CAF50;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.header-switch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.header-switch:hover { background: var(--surface-2); }
+.header-switch svg { width: 16px; height: 16px; color: var(--text-2); }
+
+/* === 行业选择抽屉（fixed 定位，适配刘海屏与居中布局） === */
+.industry-drawer {
+  position: fixed;
+  top: calc(62px + env(safe-area-inset-top, 0px));
+  right: max(16px, calc(50% - var(--max-width) / 2 + 16px));
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 20;
+  display: none;
+  min-width: 200px;
+  border: 1px solid var(--border);
+}
+
+.industry-drawer.open { display: block; animation: dropIn 0.2s ease; }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.industry-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.industry-option:hover { background: var(--surface-2); }
+.industry-option.active { background: var(--primary-bg); }
+.industry-option-icon { font-size: 18px; }
+.industry-option-text { font-size: 13px; font-weight: 500; }
+
+.drawer-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.drawer-cta { color: var(--primary); }
+.drawer-cta .industry-option-text { font-weight: 600; }
+
+/* === 信任栏（数字化） === */
+.trust-bar {
+  padding: 8px 20px;
+  background: var(--primary-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.trust-item strong { color: var(--text); font-weight: 600; }
+.trust-item svg { width: 12px; height: 12px; color: var(--primary); }
+
+/* === 消息区 === */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* === 欢迎状态 === */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--primary-soft);
+  display: grid;
+  place-items: center;
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.welcome-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.2px;
+}
+
+.welcome-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: 24px;
+  max-width: 280px;
+}
+
+.welcome-suggestions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestion-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.suggestion-card:hover {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.suggestion-card:active { transform: scale(0.98); }
+
+.suggestion-emoji { font-size: 20px; flex-shrink: 0; }
+.suggestion-text { flex: 1; }
+.suggestion-title { font-size: 13px; font-weight: 500; }
+.suggestion-desc { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+.welcome-footer {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.welcome-footer svg { width: 11px; height: 11px; }
+
+/* === 消息气泡 === */
+.msg {
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+  animation: msgIn 0.3s ease;
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+.msg-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.msg.ai .msg-avatar { background: var(--primary-soft); }
+.msg.user .msg-avatar { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; }
+
+.msg-content { min-width: 0; }
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.msg.ai .msg-bubble {
+  background: var(--bubble-ai);
+  border: 1px solid var(--bubble-ai-border);
+  border-top-left-radius: 4px;
+}
+
+.msg.user .msg-bubble {
+  background: linear-gradient(135deg, var(--bubble-user), var(--primary-light));
+  color: white;
+  border-top-right-radius: 4px;
+}
+
+.msg-time {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+.msg.user .msg-time { text-align: right; }
+
+/* === 来源引用 === */
+.msg-source {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.msg-source svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* === 转化卡片 === */
+.cta-card {
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--primary-bg), var(--primary-soft));
+  border: 1px solid var(--primary-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.cta-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.cta-card-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.cta-card-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cta-card-btn:hover { transform: scale(1.03); }
+.cta-card-btn:active { transform: scale(0.97); }
+
+/* === 留资表单 === */
+.lead-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 8px;
+  background: var(--surface);
+  transition: border-color 0.2s;
+}
+
+.lead-input:focus { border-color: var(--primary); }
+
+.lead-success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #2E7D32;
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+.lead-success svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* === 反馈按钮 === */
+.msg-feedback {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.fb-btn {
+  padding: 3px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-2);
+}
+
+.fb-btn:hover { border-color: var(--primary); color: var(--primary); }
+.fb-btn.clicked { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+
+/* === 快捷回复（横向滚动） === */
+.quick-replies {
+  padding: 6px 20px 4px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  transition: all 0.3s;
+  scrollbar-width: none;
+}
+
+.quick-replies::-webkit-scrollbar { display: none; }
+.quick-replies.hidden { display: none; }
+
+.quick-reply {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quick-reply:hover { background: var(--primary); color: white; }
+.quick-reply:active { transform: scale(0.96); }
+
+/* === 加载动画 === */
+.typing {
+  display: flex;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  animation: typingDot 1.2s infinite;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+/* 打字光标 */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--primary);
+  vertical-align: -2px;
+  margin-left: 2px;
+  animation: cursorBlink 0.8s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* === 底部区 === */
+.bottom-area {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* === 转人工 === */
+.human-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px;
+  margin: 8px 20px 0;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  width: calc(100% - 40px);
+}
+
+.human-btn:hover { border-color: var(--primary); color: var(--primary); border-style: solid; background: var(--primary-bg); }
+.human-btn svg { width: 13px; height: 13px; }
+
+/* === 输入区 === */
+.input-area {
+  padding: 10px 20px 12px;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.input-box {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+  max-height: 90px;
+  line-height: 1.5;
+  background: var(--surface-2);
+}
+
+.input-box:focus { border-color: var(--primary); background: var(--surface); }
+
+.send-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover { transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.send-btn svg { width: 16px; height: 16px; color: white; }
+
+.input-hint {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 6px;
+}
+
+/* === 移动端 === */
+@media (max-width: 500px) {
+  .app { box-shadow: none; }
+  .messages { padding: 16px; }
+  .input-area { padding: 8px 16px 10px; }
+  .quick-replies { padding: 6px 16px 4px; }
+  .human-btn { margin: 8px 16px 0; width: calc(100% - 32px); }
+  .trust-bar { padding: 8px 16px; gap: 10px; font-size: 10px; }
+}
+</style>
+</head>
+<body data-industry="pet">
+
+<div class="app">
+  <!-- 顶部栏 -->
+  <div class="header">
+    <div class="header-avatar" id="avatar">🐕</div>
+    <div class="header-info">
+      <div class="header-name" id="brandName">
+        宠安AI · 智能客服
+        <span class="verified-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+          已认证
+        </span>
+      </div>
+      <div class="header-status">
+        <span class="header-dot"></span>
+        <span>在线 · 通常30秒内回复</span>
+      </div>
+    </div>
+    <button class="header-switch" onclick="toggleDrawer()" aria-label="切换行业">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+  </div>
+
+  <!-- 信任栏（数字化） -->
+  <div class="trust-bar">
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 3.5 9 9 11 5.5-2 9-6 9-11V7l-9-5z"/></svg>
+      已服务 <strong>37</strong> 家门店
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      平均响应 <strong>1.2秒</strong>
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+      知识库 <strong>2,400+</strong> 条
+    </div>
+  </div>
+
+  <!-- 行业选择 -->
+  <div class="industry-drawer" id="drawer">
+    <div class="industry-option active" data-key="pet" onclick="switchIndustry('pet')">
+      <span class="industry-option-icon">🐕</span>
+      <span class="industry-option-text">宠物医院</span>
+    </div>
+    <div class="industry-option" data-key="edu" onclick="switchIndustry('edu')">
+      <span class="industry-option-icon">📚</span>
+      <span class="industry-option-text">教培机构</span>
+    </div>
+    <div class="industry-option" data-key="gym" onclick="switchIndustry('gym')">
+      <span class="industry-option-icon">💪</span>
+      <span class="industry-option-text">健身工作室</span>
+    </div>
+    <div class="industry-option" data-key="hair" onclick="switchIndustry('hair')">
+      <span class="industry-option-icon">✂️</span>
+      <span class="industry-option-text">美发沙龙</span>
+    </div>
+    <div class="drawer-divider"></div>
+    <div class="industry-option drawer-cta" onclick="askOtherIndustry()">
+      <span class="industry-option-icon">🏪</span>
+      <span class="industry-option-text">我的行业不在里面？</span>
+    </div>
+  </div>
+
+  <!-- 消息区 -->
+  <div class="messages" id="messages"></div>
+
+  <!-- 底部区 -->
+  <div class="bottom-area">
+    <div class="quick-replies" id="quickReplies"></div>
+    <button class="human-btn" id="humanBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      联系人工客服
+    </button>
+    <div class="input-area">
+      <div class="input-row">
+        <textarea class="input-box" id="input" placeholder="输入您的问题…" rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="send()" aria-label="发送">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">AI基于真实行业知识库回答 · Enter发送 · Shift+Enter换行</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const industries = {
+  pet: {
+    icon: '🐕', brand: '宠安AI · 智能客服',
+    welcomeTitle: '您好呀，我是宠安AI助手 🐾',
+    welcomeDesc: '宠物健康、疫苗、绝育、收费——任何问题都可以问我',
+    suggestions: [
+      { emoji: '💉', title: '疫苗咨询', desc: '猫咪第一次打疫苗需要什么', ask: '猫咪第一次打疫苗需要什么' },
+      { emoji: '✂️', title: '绝育价格', desc: '公猫/母猫绝育多少钱', ask: '公猫母猫绝育多少钱' },
+      { emoji: '🌙', title: '夜间急诊', desc: '半夜宠物不舒服怎么办', ask: '半夜宠物不舒服怎么办' },
+      { emoji: '💰', title: '收费查询', desc: '体检/驱虫/洗牙价格', ask: '体检驱虫洗牙多少钱' }
+    ],
+    quickReplies: ['💉 疫苗咨询', '💰 价格查询', '📅 预约挂号', '🌙 夜间急诊'],
+    demoQA: [
+      { keys: ['绝育'], text: '关于宠物绝育价格（深圳参考）：\n\n🐱 公猫：600-1200元\n🐱 母猫：900-2500元\n🐶 公狗：800-2000元\n🐶 母狗：1200-3500元\n\n绝育前需注意：\n• 禁食8小时、禁水4小时\n• 术前体检（血常规+生化）约200-400元\n• 术后消炎药3-5天\n\n建议提前1-2天预约。', source: 'L2_T1_P0_宠物医院_知识库' },
+      { keys: ['疫苗', '打针'], text: '宠物疫苗指南：\n\n🐱 猫咪核心疫苗：\n• 猫三联（第8/12/16周各一针）\n• 狂犬疫苗（第16周）\n• 单针价格：100-200元\n\n🐶 狗狗核心疫苗：\n• 八联/六联（第6/10/14周各一针）\n• 狂犬疫苗（第14周）\n• 单针价格：80-150元\n\n年度套餐（含体检）：约990元', source: 'L2_T1_P0_宠物医院_知识库' },
+      { keys: ['急诊', '半夜', '夜间'], text: '夜间急诊指引：\n\n• 急诊热线：0755-XXXX-XXXX（24小时）\n• 夜间急诊加收服务费：100-200元\n• 建议先电话描述症状，医生判断是否需立即送医\n\n常见急症信号：\n• 持续呕吐/腹泻超过6小时\n• 呼吸困难、牙龈发白\n• 误食异物/有毒物质\n\n如不确定，请立即致电急诊热线。', source: 'L2_T1_P0_宠物医院_知识库' },
+      { keys: ['价格', '收费', '多少钱', '费用', '体检', '驱虫', '洗牙'], text: '常见项目收费（深圳参考）：\n\n• 基础体检：100-300元\n• 体内外驱虫：80-200元/次\n• 超声波洗牙：500-1200元\n• 疫苗单针：80-200元\n\n会员可享9折，具体以到店评估为准。', source: 'L2_T1_P0_宠物医院_知识库' },
+      { keys: ['预约', '挂号'], text: '预约方式：\n\n• 电话预约：0755-XXXX-XXXX\n• 微信预约：搜索小程序「宠安」\n• 建议提前1-2天预约，急诊无需预约\n\n首次到店请携带宠物免疫证明（如有）。', source: 'L2_T1_P0_宠物医院_知识库' }
+    ],
+    fallback: '您好！关于宠物健康的问题我都可以帮您解答。\n\n可以问我：\n• 疫苗接种时间和价格\n• 绝育手术费用和注意事项\n• 体检/驱虫/洗牙价格\n• 夜间急诊流程\n\n请问您想了解什么？'
+  },
+  edu: {
+    icon: '📚', brand: '学智AI · 课程顾问',
+    welcomeTitle: '您好，我是学智AI助手 📖',
+    welcomeDesc: '课程咨询、师资介绍、收费标准都可以问我',
+    suggestions: [
+      { emoji: '💰', title: '收费标准', desc: '一对一/小班课程价格', ask: '课程收费标准是什么' },
+      { emoji: '👩‍🏫', title: '师资介绍', desc: '老师有教师资格证吗', ask: '老师有教师资格证吗' },
+      { emoji: '📅', title: '预约试听', desc: '怎么预约试听课', ask: '怎么预约试听课' },
+      { emoji: '↩️', title: '退费政策', desc: '不想学了能退费吗', ask: '不想学了能退费吗' }
+    ],
+    quickReplies: ['💰 收费标准', '👩‍🏫 师资介绍', '📅 预约试听', '↩️ 退费政策'],
+    demoQA: [
+      { keys: ['价格', '收费', '多少钱', '费用', '价目'], text: '深圳学科类校外培训政府指导价：\n\n• 10人及以下：70元/课时（上限77元）\n• 11-20人：50元/课时（上限55元）\n• 21-30人：40元/课时（上限44元）\n• 31人及以上：35元/课时（上限38.5元）\n\n一对一辅导：双减后合规应≤77元/课时\n\n来源：深圳发改委', source: 'L2_T2_P1_教培_知识库' },
+      { keys: ['退费', '退款', '退课'], text: '退费政策：\n\n1. 法律依据：\n• 《消费者权益保护法》第53条：预付款未按约提供应退回\n• 7天内未消费可无条件退卡\n\n2. 退费计算：\n• 已消费部分按原价扣除后退还余额\n• 不得以"特价卡不退不换"为由拒绝\n\n3. 注意事项：\n• 保留充值凭证和消费记录\n• 如商家拒绝可向12315投诉', source: 'L2_T2_P1_教培_知识库' },
+      { keys: ['老师', '师资', '资格证'], text: '师资保障：\n\n• 全部教师持教师资格证上岗（可现场查验）\n• 学科负责人平均教龄8年以上\n• 教师信息公示于校区公示栏及监管平台\n\n试听不满意可无条件更换老师。', source: 'L2_T2_P1_教培_知识库' },
+      { keys: ['试听', '预约', '体验'], text: '预约试听：\n\n• 电话预约：0755-XXXX-XXXX\n• 试听课免费，时长40分钟\n• 建议提前1天预约，便于安排合适班型\n\n试听当天请携带孩子近期试卷（便于学情分析）。', source: 'L2_T2_P1_教培_知识库' }
+    ],
+    fallback: '您好！我是学智AI课程顾问，可以帮您解答：\n\n• 课程收费标准和政府指导价\n• 师资资质介绍\n• 试听课预约\n• 退费政策\n\n请问您想了解什么？'
+  },
+  gym: {
+    icon: '💪', brand: '动健AI · 健身顾问',
+    welcomeTitle: '您好，我是动健AI助手 💪',
+    welcomeDesc: '办卡咨询、私教预约、退费问题都可以问我',
+    suggestions: [
+      { emoji: '💰', title: '办卡价格', desc: '月卡/季卡/年卡多少钱', ask: '月卡季卡年卡多少钱' },
+      { emoji: '🏋️', title: '私教咨询', desc: '私教课怎么收费', ask: '私教课怎么收费' },
+      { emoji: '↩️', title: '退费问题', desc: '健身卡能退吗', ask: '健身卡能退吗' },
+      { emoji: '📋', title: '办卡须知', desc: '合同注意事项', ask: '办卡合同有什么注意事项' }
+    ],
+    quickReplies: ['💰 办卡价格', '🏋️ 私教咨询', '↩️ 退费问题', '📋 办卡须知'],
+    demoQA: [
+      { keys: ['退费', '退款', '退卡'], text: '健身卡退费处理：\n\n1. 法律依据：\n• 《消费者权益保护法》第53条：预付款未按约提供应退回\n• 第26条："一经售出概不退款"等格式条款可能无效\n\n2. 深圳健身行业自律公约：\n• 设"7天消费冷静期"，7天内未消费可全额退款\n• 退费扣除已消费部分后，按实际支付价格退费\n• 违约金一般不超过会员费的30%\n\n3. 如商家拒绝：\n• 向12315投诉\n• 保留合同和付款凭证', source: 'L2_T3_P1_健身_知识库' },
+      { keys: ['价格', '多少钱', '办卡', '月卡', '季卡', '年卡'], text: '深圳健身卡价格参考：\n\n💳 月卡：\n• 24h智能健身房：69-239元/月\n• 中端连锁：200-400元/月\n\n💳 季卡：\n• 24h智能健身房：299-719元/季\n• 中端连锁：800-1500元/季\n\n🏋️ 私教课：\n• 200-500元/节\n• 建议先试课再决定买课', source: 'L2_T3_P1_健身_知识库' },
+      { keys: ['私教', '教练'], text: '私教课程：\n\n• 单节价格：200-500元\n• 课包优惠：10节起约9折，30节约8折\n• 教练均持国家职业资格证书\n\n建议先购买1节体验课，确认教练风格匹配后再买课包。', source: 'L2_T3_P1_健身_知识库' },
+      { keys: ['合同', '须知', '注意'], text: '办卡合同注意事项：\n\n• 确认合同写明退费规则，警惕"概不退款"条款\n• 年卡谨慎，优先月卡/季卡试用\n• 保留付款凭证和合同原件\n• 口头承诺要求写入合同\n\n7天冷静期内未消费可全额退款。', source: 'L2_T3_P1_健身_知识库' }
+    ],
+    fallback: '您好！我是动健AI健身顾问，可以帮您：\n\n• 查询办卡价格（月卡/季卡/年卡）\n• 私教课程咨询\n• 退费政策和维权\n• 办卡合同注意事项\n\n请问您想了解什么？'
+  },
+  hair: {
+    icon: '✂️', brand: '发艺AI · 美发顾问',
+    welcomeTitle: '您好，我是发艺AI助手 ✂️',
+    welcomeDesc: '发型咨询、价格查询、预约都可以问我',
+    suggestions: [
+      { emoji: '💰', title: '价目表', desc: '洗剪吹/染发/烫发价格', ask: '洗剪吹染发烫发多少钱' },
+      { emoji: '💇', title: '发型咨询', desc: '圆脸适合什么发型', ask: '圆脸适合什么发型' },
+      { emoji: '📅', title: '预约时间', desc: '怎么预约发型师', ask: '怎么预约发型师' },
+      { emoji: '↩️', title: '退卡问题', desc: '预付卡能退吗', ask: '预付卡能退吗' }
+    ],
+    quickReplies: ['💰 价目表', '💇 发型咨询', '📅 预约时间', '↩️ 退卡问题'],
+    demoQA: [
+      { keys: ['价格', '多少钱', '价目', '收费'], text: '深圳美发价格参考：\n\n✂️ 洗剪吹：\n• 团购引流价：9.9-29.9元\n• 社区店常规价：45-68元\n• 中端连锁价：78-160元\n\n🎨 染发：\n• 普通店：60-100元\n• 中端专业店：200-300元\n• 高端salon：494-800+元\n\n具体以门店价目表为准。', source: 'L2_T4_P1_美发_知识库' },
+      { keys: ['退卡', '退费', '退款', '预付卡'], text: '美发预付卡退卡：\n\n1. 法律依据：\n• 《消费者权益保护法》第26条：不得以"卡面标注不可退"拒绝\n• 7天未消费可无条件退卡\n• 已消费按原价扣除后退余额\n\n2. 门店关闭处理：\n• 消费者可向总店主张退款\n• 向12315投诉\n• 保留充值凭证和消费记录', source: 'L2_T4_P1_美发_知识库' },
+      { keys: ['发型', '脸型', '圆脸'], text: '发型建议（圆脸）：\n\n• 推荐：侧分长发、高层次锁骨发、八字刘海\n• 避免：齐刘海、贴头皮直发、下巴长度的内扣\n\n建议到店让发型师根据发质和头型做免费设计咨询，满意再决定。', source: 'L2_T4_P1_美发_知识库' },
+      { keys: ['预约', '发型师'], text: '预约方式：\n\n• 电话预约：0755-XXXX-XXXX\n• 可指定发型师，建议提前1-2天\n• 周末高峰建议提前3天\n\n首次到店可享免费发型设计咨询。', source: 'L2_T4_P1_美发_知识库' }
+    ],
+    fallback: '您好！我是发艺AI美发顾问，可以帮您：\n\n• 查询服务价格（洗剪吹/染发/烫发）\n• 发型咨询和建议\n• 预约发型师\n• 预付卡退卡问题\n\n请问您想了解什么？'
+  }
+};
+
+// === 转化相关回复（跨行业通用）===
+const DEPLOY_KEYWORDS = ['部署', '接入', '能定制', '定制一套', '定制吗', '我的行业', '怎么合作', '买一套', '怎么卖'];
+const DEPLOY_REPLY = {
+  text: '这套AI客服可以这样落地到您的门店：\n\n1️⃣ 提供您的价目表、常见问题、门店信息\n2️⃣ 我们整理成专属知识库（1天）\n3️⃣ 部署上线，生成您门店专属的聊天链接/二维码（2天）\n\n✅ 全程不需要您懂技术\n✅ 界面会换成您门店的名字和主题色\n✅ 支持微信扫码直接对话\n\n留下您的联系方式，我们1对1演示给您看。',
+  source: null,
+  cta: true
+};
+
+let currentIndustry = 'pet';
+let messages = [];
+let isTyping = false;
+let aiReplyCount = 0;
+let ctaShown = false;
+
+// === ?brand= 参数：演示时替换为客户店名 ===
+(function applyBrandParam() {
+  const brand = new URLSearchParams(location.search).get('brand');
+  if (!brand) return;
+  Object.values(industries).forEach(ind => {
+    const suffix = ind.brand.split('·')[1];
+    ind.brand = brand + (suffix ? ' · ' + suffix.trim() : '');
+  });
+})();
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function nowTime() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function switchIndustry(key) {
+  currentIndustry = key;
+  const ind = industries[key];
+  document.body.dataset.industry = key;
+  document.getElementById('avatar').textContent = ind.icon;
+
+  const nameEl = document.getElementById('brandName');
+  nameEl.childNodes[0].nodeValue = ind.brand + ' ';
+
+  document.querySelectorAll('.industry-option').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.key === key);
+  });
+
+  document.getElementById('drawer').classList.remove('open');
+  messages = [];
+  isTyping = false;
+  aiReplyCount = 0;
+  ctaShown = false;
+  renderWelcome();
+  renderQuickReplies();
+  document.getElementById('quickReplies').classList.remove('hidden');
+}
+
+function toggleDrawer() {
+  document.getElementById('drawer').classList.toggle('open');
+}
+
+function askOtherIndustry() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('input').value = '我的行业不在列表里，能定制吗';
+  send();
+}
+
+function renderWelcome() {
+  const ind = industries[currentIndustry];
+  const el = document.getElementById('messages');
+  el.innerHTML = `
+    <div class="welcome">
+      <div class="welcome-icon">${ind.icon}</div>
+      <div class="welcome-title">${escapeHtml(ind.welcomeTitle)}</div>
+      <div class="welcome-desc">${escapeHtml(ind.welcomeDesc)}</div>
+      <div class="welcome-suggestions">
+        ${ind.suggestions.map((s, idx) => `
+          <div class="suggestion-card" onclick="askSuggestion(${idx})">
+            <span class="suggestion-emoji">${s.emoji}</span>
+            <div class="suggestion-text">
+              <div class="suggestion-title">${escapeHtml(s.title)}</div>
+              <div class="suggestion-desc">${escapeHtml(s.desc)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="welcome-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 3.5 9 9 11 5.5-2 9-6 9-11V7l-9-5z"/></svg>
+        演示数据 · 上线时可替换为您门店的真实价目表和问答
+      </div>
+    </div>
+  `;
+}
+
+function askSuggestion(idx) {
+  const s = industries[currentIndustry].suggestions[idx];
+  document.getElementById('input').value = s.ask || s.title;
+  send();
+}
+
+function renderQuickReplies() {
+  const ind = industries[currentIndustry];
+  const el = document.getElementById('quickReplies');
+  el.innerHTML = ind.quickReplies.map((q, idx) =>
+    `<div class="quick-reply" onclick="askQuickReply(${idx})">${q}</div>`
+  ).join('');
+}
+
+function askQuickReply(idx) {
+  const raw = industries[currentIndustry].quickReplies[idx];
+  // 去掉前缀 emoji，只留文字部分用于匹配
+  const text = raw.replace(/^[\p{Emoji}\u200d\ufe0f\s]+/u, '');
+  document.getElementById('input').value = raw;
+  send();
+}
+
+function matchQA(text) {
+  // 部署意向优先
+  if (DEPLOY_KEYWORDS.some(k => text.includes(k))) return DEPLOY_REPLY;
+  const qa = industries[currentIndustry].demoQA;
+  for (const item of qa) {
+    if (item.keys.some(k => text.includes(k))) return item;
+  }
+  return { text: industries[currentIndustry].fallback, source: null };
+}
+
+function send() {
+  if (isTyping) return;
+
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  messages.push({ role: 'user', content: text, time: nowTime() });
+  renderMessages();
+
+  document.getElementById('quickReplies').classList.add('hidden');
+
+  isTyping = true;
+  renderMessages();
+
+  setTimeout(() => {
+    const resp = matchQA(text);
+    isTyping = false;
+
+    // 打字机效果：先推入空内容消息，逐字填充
+    const msg = { role: 'ai', content: '', source: resp.source, cta: resp.cta, fullText: resp.text, time: nowTime() };
+    messages.push(msg);
+    renderMessages();
+    typewriteLast(msg, () => {
+      msg.content = msg.fullText;
+      delete msg.fullText;
+      aiReplyCount++;
+      renderMessages();
+      // 部署话术 → 紧跟留资表单
+      if (resp.cta) {
+        messages.push({ role: 'ai', content: '太好了！留个联系方式，马上为您安排 👇', form: true, submitted: false, time: nowTime() });
+        renderMessages();
+        return;
+      }
+      // 第二轮 AI 回复后插入转化卡片
+      if (aiReplyCount === 2 && !ctaShown) {
+        ctaShown = true;
+        messages.push({
+          role: 'ai',
+          content: '顺便说一句：您现在看到的问答，全部可以换成【您门店自己的】价目表和知识。',
+          cta: true,
+          time: nowTime()
+        });
+        renderMessages();
+      }
+    });
+  }, 600 + Math.random() * 500);
+}
+
+function typewriteLast(msg, done) {
+  const el = document.getElementById('messages');
+  const bubbles = el.querySelectorAll('.msg.ai .msg-bubble');
+  const bubble = bubbles[bubbles.length - 1];
+  if (!bubble) { done && done(); return; }
+
+  const full = msg.fullText;
+  let i = 0;
+  const timer = setInterval(() => {
+    i += 2;
+    bubble.innerHTML = escapeHtml(full.slice(0, i)).replace(/\n/g, '<br>') +
+      (i < full.length ? '<span class="typing-cursor"></span>' : '');
+    // 打字中只在接近底部时跟随滚动
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+    if (i >= full.length) {
+      clearInterval(timer);
+      done && done();
+    }
+  }, 18);
+}
+
+function renderMessages() {
+  const el = document.getElementById('messages');
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+
+  document.getElementById('sendBtn').disabled = isTyping;
+
+  if (messages.length === 0) {
+    renderWelcome();
+    return;
+  }
+
+  el.innerHTML = messages.map((m, i) => {
+    const isLast = i === messages.length - 1;
+    const avatar = m.role === 'user' ? '我' : industries[currentIndustry].icon;
+    const displayText = m.fullText !== undefined ? m.content : m.content;
+    return `
+      <div class="msg ${m.role}">
+        <div class="msg-avatar">${avatar}</div>
+        <div class="msg-content">
+          <div class="msg-bubble">${escapeHtml(displayText).replace(/\n/g, '<br>')}</div>
+          ${m.source ? `
+            <div class="msg-source">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+              参考来源：${escapeHtml(m.source)}
+            </div>
+          ` : ''}
+          ${m.form ? `
+            <div class="cta-card">
+              ${m.submitted ? `
+                <div class="lead-success">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                  已收到！我们会尽快联系您安排1对1演示
+                </div>
+              ` : `
+                <div class="cta-card-title">📞 留下联系方式，免费1对1演示</div>
+                <div class="cta-card-desc">微信号或手机号均可，仅用于本次演示预约</div>
+                <input class="lead-input" id="leadInput" type="text" placeholder="您的微信或手机号" maxlength="30">
+                <button class="cta-card-btn" onclick="submitLead()">预约演示 →</button>
+              `}
+            </div>
+          ` : ''}
+          ${m.cta && m.fullText === undefined ? `
+            <div class="cta-card">
+              <div class="cta-card-title">🏪 这套系统可以部署到您的门店</div>
+              <div class="cta-card-desc">3天上线 · 无需懂技术 · 换成您的品牌名和知识库</div>
+              <button class="cta-card-btn" onclick="askDeploy()">了解怎么接入 →</button>
+            </div>
+          ` : ''}
+          ${m.role === 'ai' && isLast && !isTyping && m.fullText === undefined ? `
+            <div class="msg-feedback" data-msg="${i}">
+              <button class="fb-btn" onclick="feedback(this)">👍 有帮助</button>
+              <button class="fb-btn" onclick="feedback(this)">👎 没帮助</button>
+            </div>
+          ` : ''}
+          <div class="msg-time">${m.time || ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (isTyping) {
+    el.innerHTML += `
+      <div class="msg ai">
+        <div class="msg-avatar">${industries[currentIndustry].icon}</div>
+        <div class="msg-content">
+          <div class="msg-bubble">
+            <div class="typing"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+    `;
+    el.scrollTop = el.scrollHeight;
+    return;
+  }
+
+  if (nearBottom) el.scrollTop = el.scrollHeight;
+}
+
+function askDeploy() {
+  document.getElementById('input').value = '我想部署一套到我的门店';
+  send();
+}
+
+function submitLead() {
+  const input = document.getElementById('leadInput');
+  const value = (input.value || '').trim();
+  if (value.length < 5) {
+    input.style.borderColor = '#E53935';
+    input.placeholder = '请填写正确的微信或手机号';
+    input.focus();
+    return;
+  }
+  // demo 阶段存 localStorage；正式部署改为 POST 到后端
+  const leads = JSON.parse(localStorage.getItem('demo_leads') || '[]');
+  leads.push({
+    contact: value,
+    industry: currentIndustry,
+    brand: industries[currentIndustry].brand,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem('demo_leads', JSON.stringify(leads));
+
+  const formMsg = messages.find(m => m.form && !m.submitted);
+  if (formMsg) formMsg.submitted = true;
+  renderMessages();
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+
+function feedback(btn) {
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('clicked'));
+  btn.classList.add('clicked');
+}
+
+function autoResize(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(textarea.scrollHeight, 90) + 'px';
+}
+
+function handleKey(e) {
+  // isComposing：中文输入法选词中的 Enter 不触发发送
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    send();
+  }
+}
+
+// 点击外部关闭抽屉
+document.addEventListener('click', (e) => {
+  const drawer = document.getElementById('drawer');
+  const switchBtn = document.querySelector('.header-switch');
+  if (!drawer.contains(e.target) && !switchBtn.contains(e.target)) {
+    drawer.classList.remove('open');
+  }
+});
+
+// iOS 键盘弹起适配
+if (window.visualViewport) {
+  const app = document.querySelector('.app');
+  visualViewport.addEventListener('resize', () => {
+    app.style.minHeight = visualViewport.height + 'px';
+    const el = document.getElementById('messages');
+    el.scrollTop = el.scrollHeight;
+  });
+}
+
+// 初始化
+switchIndustry('pet');
+</script>
+
+</body>
+</html>
