@@ -563,6 +563,39 @@ body {
   50% { opacity: 0; }
 }
 
+/* === 持久CTA栏 === */
+.persistent-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--primary-bg), var(--primary-soft));
+  border-top: 1px solid var(--primary-soft);
+  font-size: 12px;
+  color: var(--text);
+}
+.persistent-cta-text { flex: 1; min-width: 0; }
+.persistent-cta-text strong { color: var(--primary); font-weight: 600; }
+.persistent-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.persistent-cta-btn:hover { transform: scale(1.03); }
+.persistent-cta-btn:active { transform: scale(0.97); }
+.persistent-cta-btn svg { width: 12px; height: 12px; }
+
 /* === 底部区 === */
 .bottom-area {
   border-top: 1px solid var(--border);
@@ -651,6 +684,8 @@ body {
   .quick-replies { padding: 6px 16px 4px; }
   .human-btn { margin: 8px 16px 0; width: calc(100% - 32px); }
   .trust-bar { padding: 8px 16px; gap: 10px; font-size: 10px; }
+  .persistent-cta { padding: 7px 12px; font-size: 11px; gap: 6px; }
+  .persistent-cta-btn { padding: 4px 10px; font-size: 10px; }
 }
 </style>
 </head>
@@ -724,6 +759,14 @@ body {
 
   <!-- 底部区 -->
   <div class="bottom-area">
+    <!-- 持久CTA栏：始终可见 -->
+    <div class="persistent-cta">
+      <div class="persistent-cta-text">想让你店也有？加微信 <strong>15159510967</strong></div>
+      <button class="persistent-cta-btn" onclick="copyWechat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>
+        复制微信号
+      </button>
+    </div>
     <div class="quick-replies" id="quickReplies"></div>
     <button class="human-btn" id="humanBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -1180,6 +1223,7 @@ function renderMessages() {
                 ${m.demoLink}
               </div>
               <button class="cta-card-btn" onclick="copyLink('${m.demoLink}')" style="margin-bottom:8px;">📋 复制链接</button>
+              <button class="cta-card-btn" onclick="shareLink('${m.demoLink}', '${m.brandName || '我的店'}')" style="margin-bottom:8px;background:#fff;color:var(--primary);border:1px solid var(--primary);">📤 分享给朋友</button>
               <button class="cta-card-btn" onclick="askDeploy()" style="background:#fff;color:var(--primary);border:1px solid var(--primary);">了解怎么部署到微信 →</button>
             </div>
           ` : ''}
@@ -1257,6 +1301,44 @@ function copyLink(link) {
     document.execCommand('copy');
     document.body.removeChild(ta);
     alert('链接已复制！粘贴到浏览器即可体验');
+  }
+}
+
+function copyWechat() {
+  const wx = '15159510967';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(wx).then(() => {
+      alert('微信号已复制：' + wx + '\n\n打开微信→添加朋友→粘贴搜索即可');
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = wx;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('微信号已复制：' + wx + '\n\n打开微信→添加朋友→粘贴搜索即可');
+  }
+}
+
+function shareLink(link, brand) {
+  const text = '我做了个AI客服demo，输入店名就能生成专属体验链接，你也试试：\n' + link;
+  if (navigator.share) {
+    navigator.share({ title: brand + ' 专属AI客服', text: text, url: link });
+  } else {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('分享文案已复制！粘贴到微信/朋友圈即可');
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('分享文案已复制！粘贴到微信/朋友圈即可');
+    }
   }
 }
 
